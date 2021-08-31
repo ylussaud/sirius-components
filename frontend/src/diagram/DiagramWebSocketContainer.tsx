@@ -20,12 +20,13 @@ import { useMachine } from '@xstate/react';
 import { ServerContext } from 'common/ServerContext';
 import {
   CreateNodeTool,
-  GQLDiagram,
+  GQLDiagramDescription,
   GQLDiagramEventSubscription,
   GQLDiagramRefreshedEventPayload,
   GQLErrorPayload,
-  GQLGetToolSectionsData,
-  GQLGetToolSectionsVariables,
+  GQLGetDiagramDescriptionData,
+  GQLGetDiagramDescriptionVariables,
+  GQLRepresentationMetadata,
   GQLSubscribersUpdatedEventPayload,
   Palette,
   Tool,
@@ -45,6 +46,7 @@ import {
   SelectionEvent,
   SelectZoomLevelEvent,
   SetActiveToolEvent,
+  SetAutoLayoutEvent,
   SetContextualPaletteEvent,
   SetDefaultToolEvent,
   SetToolSectionsEvent,
@@ -58,7 +60,7 @@ import {
   deleteFromDiagramMutation,
   diagramEventSubscription,
   editLabelMutation as editLabelMutationOp,
-  getToolSectionsQuery,
+  getDiagramDescriptionQuery,
   invokeDeleteToolOnDiagramMutation,
   invokeEdgeToolOnDiagramMutation,
   invokeNodeToolOnDiagramMutation,
@@ -122,7 +124,8 @@ const useDiagramWebSocketContainerStyle = makeStyles((theme) => ({
   },
 }));
 
-const isDiagram = (representation): representation is GQLDiagram => representation.__typename === 'Diagram';
+const isDiagram = (representation): representation is GQLRepresentationMetadata =>
+  representation.kind === 'Diagram' && representation.description.__typename === 'DiagramDescription';
 const isDiagramRefreshedEventPayload = (payload: GQLDiagramEventPayload): payload is GQLDiagramRefreshedEventPayload =>
   payload.__typename === 'DiagramRefreshedEventPayload';
 const isSubscribersUpdatedEventPayload = (
@@ -299,6 +302,7 @@ export const DiagramWebSocketContainer = ({
     diagramServer,
     diagram,
     toolSections,
+    autoLayout,
     contextualPalette,
     activeTool,
     newSelection,
@@ -336,28 +340,24 @@ export const DiagramWebSocketContainer = ({
   ] = useMutation(updateNodeBoundsOp);
   const [arrangeAllMutation, { loading: arrangeAllLoading, data: arrangeAllData, error: arrangeAllError }] =
     useMutation(arrangeAllOp);
-  const [getToolSectionData, { loading: toolSectionLoading, data: toolSectionData }] = useLazyQuery<
-    GQLGetToolSectionsData,
-    GQLGetToolSectionsVariables
-  >(getToolSectionsQuery);
+  const [getDiagramDescriptionData, { loading: diagramDescriptionLoading, data: diagramDescriptionData }] =
+    useLazyQuery<GQLGetDiagramDescriptionData, GQLGetDiagramDescriptionVariables>(getDiagramDescriptionQuery);
   /**
-   * We have choose to make only one query by diagram to get tools to avoid network flooding.
-   * In consequence, a tool must contains all necessary properties to be filtered on a specific context (In the contextual palette for example).
-   * The query to get tool sections depends on the representationId and we use a React useEffect to match this workflow.
-   * For each update of the representationId value, we will redo a query and update tools.
+   * Fetch the "static" representation information that are on the diagram description (tool sections, etc.)
+   * only when we switch representation.
    */
   useEffect(() => {
-    getToolSectionData({ variables: { editingContextId, diagramId: representationId } });
-  }, [editingContextId, representationId, getToolSectionData]);
+    getDiagramDescriptionData({ variables: { editingContextId, diagramId: representationId } });
+  }, [editingContextId, representationId, getDiagramDescriptionData]);
   /**
    * Dispatch the diagram to the diagramServer if our state indicate that diagram has changed.
    */
   useEffect(() => {
     if (diagramServer) {
-      const action: SiriusUpdateModelAction = { kind: 'siriusUpdateModel', diagram, readOnly };
+      const action: SiriusUpdateModelAction = { kind: 'siriusUpdateModel', diagram, autoLayout, readOnly };
       diagramServer.actionDispatcher.dispatch(action);
     }
-  }, [diagram, diagramServer, readOnly]);
+  }, [diagram, diagramServer, autoLayout, readOnly]);
 
   /**
    * Dispatch the activeTool to the diagramServer if our state indicate that activeTool has changed.
@@ -618,16 +618,19 @@ export const DiagramWebSocketContainer = ({
   ]);
 
   useEffect(() => {
-    if (!toolSectionLoading && diagramWebSocketContainer === 'ready' && toolSectionData) {
-      const representation = toolSectionData.viewer.editingContext.representation;
+    if (!diagramDescriptionLoading && diagramWebSocketContainer === 'ready' && diagramDescriptionData) {
+      const representation = diagramDescriptionData.viewer.editingContext.representation;
       if (isDiagram(representation)) {
-        const { toolSections } = representation;
+        const { toolSections, autoLayout } = representation.description as GQLDiagramDescription;
 
         const setToolSectionsEvent: SetToolSectionsEvent = { type: 'SET_TOOL_SECTIONS', toolSections: toolSections };
         dispatch(setToolSectionsEvent);
+
+        const setAutoLayoutEvent: SetAutoLayoutEvent = { type: 'SET_AUTO_LAYOUT', autoLayout: autoLayout };
+        dispatch(setAutoLayoutEvent);
       }
     }
-  }, [toolSectionLoading, toolSectionData, diagramWebSocketContainer, dispatch]);
+  }, [diagramDescriptionLoading, diagramDescriptionData, diagramWebSocketContainer, dispatch]);
 
   useEffect(() => {
     if (selectedObjectId && activeTool && contextualPalette) {
@@ -936,7 +939,7 @@ export const DiagramWebSocketContainer = ({
         onFitToScreen={onFitToScreen}
         onArrangeAll={onArrangeAll}
         setZoomLevel={setZoomLevel}
-        autoLayout={diagram?.autoLayout}
+        autoLayout={autoLayout}
         zoomLevel={zoomLevel}
         subscribers={subscribers}
       />

@@ -129,7 +129,7 @@ public class DropOnDiagramEventHandler implements IDiagramEventHandler {
                 variableManager.put(VariableManager.SELF, self);
 
                 IStatus dropResult = dropHandler.apply(variableManager);
-                if (result instanceof Failure) {
+                if (dropResult instanceof Failure) {
                     // Let all drops finished but keep the error state
                     result = dropResult;
                 }

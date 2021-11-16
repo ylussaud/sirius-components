@@ -16,10 +16,6 @@ import java.text.MessageFormat;
 import java.util.List;
 import java.util.UUID;
 
-import org.eclipse.sirius.web.annotations.graphql.GraphQLField;
-import org.eclipse.sirius.web.annotations.graphql.GraphQLID;
-import org.eclipse.sirius.web.annotations.graphql.GraphQLInputObjectType;
-import org.eclipse.sirius.web.annotations.graphql.GraphQLNonNull;
 import org.eclipse.sirius.web.spring.collaborative.diagrams.api.IDiagramInput;
 
 /**
@@ -27,7 +23,6 @@ import org.eclipse.sirius.web.spring.collaborative.diagrams.api.IDiagramInput;
  *
  * @author hmarchadour
  */
-@GraphQLInputObjectType
 public final class DropOnDiagramInput implements IDiagramInput {
     private UUID id;
 
@@ -44,48 +39,31 @@ public final class DropOnDiagramInput implements IDiagramInput {
     private double startingPositionY;
 
     @Override
-    @GraphQLID
-    @GraphQLField
-    @GraphQLNonNull
     public UUID getId() {
         return this.id;
     }
 
-    @GraphQLID
-    @GraphQLField
-    @GraphQLNonNull
     public UUID getEditingContextId() {
         return this.editingContextId;
     }
 
     @Override
-    @GraphQLID
-    @GraphQLField
-    @GraphQLNonNull
     public UUID getRepresentationId() {
         return this.representationId;
     }
 
-    @GraphQLID
-    @GraphQLField
     public UUID getDiagramTargetElementId() {
         return this.diagramTargetElementId;
     }
 
-    @GraphQLField
-    @GraphQLNonNull
-    public List<@GraphQLNonNull @GraphQLID String> getObjectIds() {
+    public List<String> getObjectIds() {
         return this.objectIds;
     }
 
-    @GraphQLField
-    @GraphQLNonNull
     public double getStartingPositionX() {
         return this.startingPositionX;
     }
 
-    @GraphQLField
-    @GraphQLNonNull
     public double getStartingPositionY() {
         return this.startingPositionY;
     }

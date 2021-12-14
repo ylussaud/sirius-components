@@ -35,6 +35,7 @@ Currently it is not possible to compute different values for width and height.
 - [compatibility] Fix a potential NPE in logging code of the `WidgetDescriptionConverter`
 - [form] Handle invalid format more gracefully when editing numeric properties
 - [view] Fix the canonical domain-based edge creation tool
+- https://github.com/eclipse-sirius/sirius-components/issues/746[#746] [core] Keep representations in memory for 5 more seconds when they should be disposed in order to have the time to receive some input before their disposal
 
 
 == v2021.12.0
